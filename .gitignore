@@ -1,0 +1,6 @@
+target/
+armazenamento/*/*
+!armazenamento/*/.gitkeep
+.env
+.env.*
+*.log

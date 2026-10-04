@@ -1,0 +1,90 @@
+name: atividade01-imagens
+
+x-app: &app
+  build: .
+  image: atividade01-imagens:local
+  user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+  environment: &env
+    RABBIT_HOST: rabbitmq
+    RABBIT_USER: atividade
+    RABBIT_PASSWORD: atividade-local
+    STORAGE_IDS: servidor1,servidor2
+  depends_on:
+    topologia:
+      condition: service_completed_successfully
+
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: atividade
+      RABBITMQ_DEFAULT_PASS: atividade-local
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbit-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  topologia:
+    <<: *app
+    command: ["topologia"]
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  conversor:
+    <<: *app
+    command: ["conversor"]
+    environment:
+      <<: *env
+      CONVERSION_DELAY_MS: "${CONVERSION_DELAY_MS:-0}"
+    restart: unless-stopped
+
+  armazenamento1:
+    <<: *app
+    command: ["armazenador", "servidor1", "/saida"]
+    volumes: ["./armazenamento/servidor1:/saida"]
+    restart: unless-stopped
+
+  armazenamento2:
+    <<: *app
+    command: ["armazenador", "servidor2", "/saida"]
+    volumes: ["./armazenamento/servidor2:/saida"]
+    restart: unless-stopped
+
+  cliente1:
+    <<: *app
+    profiles: ["ferramentas"]
+    command: ["cliente", "cliente1", "/entrada"]
+    volumes: ["./clientes/cliente1:/entrada:ro"]
+
+  cliente2:
+    <<: *app
+    profiles: ["ferramentas"]
+    command: ["cliente", "cliente2", "/entrada"]
+    volumes: ["./clientes/cliente2:/entrada:ro"]
+
+  amostras:
+    <<: *app
+    profiles: ["ferramentas"]
+    command: ["amostras", "/clientes"]
+    volumes: ["./clientes:/clientes"]
+    depends_on: {}
+
+  verificador:
+    <<: *app
+    profiles: ["ferramentas"]
+    command: ["verificar", "/clientes", "/armazenamento", "60"]
+    volumes:
+      - "./clientes:/clientes:ro"
+      - "./armazenamento:/armazenamento:ro"
+    depends_on: {}
+
+volumes:
+  rabbit-data:
