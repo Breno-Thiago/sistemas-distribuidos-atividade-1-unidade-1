@@ -36,6 +36,7 @@ final class Images {
 
     static byte[] grayscale(byte[] bytes, String format) throws IOException {
         BufferedImage source = decode(bytes);
+        // PNG com transparência mantém o canal alfa na saída.
         boolean alpha = format.equals("png") && source.getColorModel().hasAlpha();
         BufferedImage gray = new BufferedImage(source.getWidth(), source.getHeight(),
                 alpha ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_BYTE_GRAY);
@@ -64,6 +65,7 @@ final class Images {
                 while (buffer.hasRemaining()) channel.write(buffer);
                 channel.force(true);
             }
+            // O nome final só é substituído depois que a escrita termina.
             Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } finally { Files.deleteIfExists(temporary); }
     }

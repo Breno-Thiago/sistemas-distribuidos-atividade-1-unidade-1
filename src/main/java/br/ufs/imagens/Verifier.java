@@ -19,6 +19,7 @@ final class Verifier {
                 for (int y = 0; y < image.getHeight(); y++) {
                     for (int x = 0; x < image.getWidth(); x++) {
                         int a = alpha ? x * 255 / 159 : 255;
+                        // Os padrões diferem entre clientes mesmo quando o nome é igual.
                         int r = (x * client + y) % 256;
                         int g = (y * 2 + client * 50) % 256;
                         int b = (x + y * client + 80) % 256;
@@ -63,6 +64,7 @@ final class Verifier {
 
     static void verify(Path inputs, Path outputs, int timeoutSeconds) throws Exception {
         List<Path> sources = sources(inputs);
+        // A conversão é assíncrona; os arquivos podem chegar durante a espera.
         long deadline = System.nanoTime() + timeoutSeconds * 1_000_000_000L;
         String lastError = "";
         while (true) {

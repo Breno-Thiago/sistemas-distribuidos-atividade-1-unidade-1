@@ -40,6 +40,7 @@ public final class Main {
                 "x-dead-letter-routing-key", ERRORS);
         channel.queueDeclare(INPUT, true, false, false, arguments);
         channel.exchangeDeclare(OUTPUT, BuiltinExchangeType.FANOUT, true);
+        // Cada armazenador tem sua fila para receber uma cópia de todas as imagens.
         for (String id : storageIds()) {
             String queue = "armazenamento." + Images.component(id.trim());
             channel.queueDeclare(queue, true, false, false, arguments);
@@ -96,6 +97,7 @@ public final class Main {
              Channel publisher = connection.createChannel()) {
             topology(consumer);
             AtomicBoolean returned = setupPublisher(publisher);
+            // Cada instância recebe uma entrega sem ACK por vez.
             consumer.basicQos(1);
             String queue = converter ? INPUT : "armazenamento." + Images.component(storageId);
             consumer.basicConsume(queue, false, (tag, delivery) -> {
@@ -118,6 +120,7 @@ public final class Main {
                         Images.save(root, client, name, delivery.getBody());
                         log("SALVA servidor=" + storageId + " cliente=" + client + " arquivo=" + name);
                     }
+                    // Confirma a entrada somente após publicar o resultado ou salvar o arquivo.
                     consumer.basicAck(deliveryTag, false);
                 } catch (IllegalArgumentException e) {
                     log("ERRO permanente id=" + delivery.getProperties().getMessageId() + " motivo=" + e.getMessage());
